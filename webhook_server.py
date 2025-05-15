@@ -5,14 +5,21 @@ app = Flask(__name__)
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
-        data = request.json
-        print("TradingView Alert Received:", data)  # This should print the JSON payload
-        if data is None:
-            print("Warning: Received empty JSON payload")
+        # Try parsing JSON first
+        data = request.get_json(silent=True)
+        if data:
+            print("TradingView JSON Alert Received:", data)
+        else:
+            # If no JSON, print raw data as text
+            raw_data = request.data.decode('utf-8')
+            print("Received non-JSON payload:", raw_data)
+
         return jsonify({"status": "received"}), 200
     except Exception as e:
-        print("Error parsing JSON:", e)
+        print("Error processing webhook:", e)
         return jsonify({"status": "error", "message": str(e)}), 400
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    import os
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
