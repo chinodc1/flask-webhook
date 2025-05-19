@@ -1,48 +1,51 @@
-from flask import Flask, request
+import os
+import json
+import logging
+from datetime import datetime, timezone
+from flask import Flask, request, jsonify
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime, timezone
-import json
-import os
 
-# Get credentials JSON string from environment variable 'ggl'
+app = Flask(__name__)
+
+# Enable logging to stdout for Render logs
+logging.basicConfig(level=logging.INFO)
+
+# Google Sheets credentials from environment variable 'ggl'
 creds_json_str = os.environ.get('ggl')
 if not creds_json_str:
     raise Exception("Environment variable 'ggl' with Google credentials JSON not found.")
 
-# Parse the JSON string to dict
 creds_json = json.loads(creds_json_str)
-
-# Define the scope
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
-# Load credentials from dict
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
-
-# Authorize the client
 client = gspread.authorize(creds)
 
-# Open the sheet
-sheet = client.open("Webhook Alerts").sheet1
-
-# === Flask App ===
-app = Flask(__name__)
+sheet = client.open("Webhook Alerts").sheet1  # Make sure this matches your sheet name
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    data = request.get_json()
+    app.logger.info("✅ Webhook endpoint was hit.")
+    try:
+        data = request.get_json(force=True)
+        app.logger.info(f"📦 Received JSON: {data}")
 
-    ticker = data.get('ticker')
-    interval = data.get('interval')
-    event = data.get('event')
-    price = data.get('price')
+        ticker = data.get('ticker', '')
+        interval = data.get('interval', '')
+        event = data.get('event', '')
+        price = data.get('price', '')
 
-    # Use timezone-aware UTC ISO format
-    timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
-    sheet.append_row([timestamp, ticker, interval, event, price])
+        sheet.append_row([timestamp, ticker, interval, event, price])
+        app.logger.info("📈 Data appended to Google Sheets.")
 
-    return 'Webhook received and data logged.', 200
+    except Exception as e:
+        app.logger.error(f"❌ Failed processing webhook data: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+    return jsonify({"status": "success", "message": "Data logged to Google Sheets."}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
