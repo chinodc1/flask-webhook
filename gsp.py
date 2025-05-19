@@ -37,7 +37,7 @@ def webhook():
 
         timestamp = datetime.now(timezone.utc).isoformat()
 
-        sheet.append_row([timestamp, ticker, interval, event, price])
+        sheet.append_row([timestamp, ticker, interval, time, price])
         app.logger.info("📈 Data appended to Google Sheets.")
 
     except Exception as e:
