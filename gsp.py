@@ -32,7 +32,7 @@ def webhook():
 
         ticker = data.get('ticker', '')
         interval = data.get('interval', '')
-        event = data.get('event', '')
+        time = data.get('time', '')
         price = data.get('price', '')
 
         timestamp = datetime.now(timezone.utc).isoformat()
