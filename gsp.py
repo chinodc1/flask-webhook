@@ -2,13 +2,22 @@ from flask import Flask, request
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timezone
-timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+import json
+import os
+
+# Get credentials JSON string from environment variable 'ggl'
+creds_json_str = os.environ.get('ggl')
+if not creds_json_str:
+    raise Exception("Environment variable 'ggl' with Google credentials JSON not found.")
+
+# Parse the JSON string to dict
+creds_json = json.loads(creds_json_str)
 
 # Define the scope
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# Load credentials
-creds = ServiceAccountCredentials.from_json_keyfile_name('/Users/carlos/Downloads/tradingviewwebhooklogger-2143512d62a3.json', scope)
+# Load credentials from dict
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 
 # Authorize the client
 client = gspread.authorize(creds)
@@ -27,7 +36,9 @@ def webhook():
     interval = data.get('interval')
     event = data.get('event')
     price = data.get('price')
-    timestamp = datetime.datetime.utcnow().isoformat()
+
+    # Use timezone-aware UTC ISO format
+    timestamp = datetime.now(timezone.utc).isoformat()
 
     sheet.append_row([timestamp, ticker, interval, event, price])
 
